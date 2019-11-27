@@ -6,11 +6,11 @@ module Redmine.API
   ) where
 
 
+import qualified Data.CurrentUserResult as CurrentUserResult
 import           Data.Proxy
-import qualified Data.Text            as T
-import qualified Data.TimeEntry       as TimeEntry
-import qualified Data.TimeEntryResult as TimeEntryResult
-import qualified Data.UsersResult     as UsersResult
+import qualified Data.Text              as T
+import qualified Data.TimeEntry         as TimeEntry
+import qualified Data.TimeEntryResult   as TimeEntryResult
 import           Servant.API
 
 
@@ -22,10 +22,10 @@ type RedmineAPI =
     UserAPI :<|> TimeEntryAPI
 
 type UserAPI =
-    "users.json"
+    "users"
+      :> "current.json"
       :> QueryParam "key" T.Text
-      :> QueryParam "name" T.Text
-      :> Get '[JSON] UsersResult.UsersResult
+      :> Get '[JSON] CurrentUserResult.CurrentUserResult
 
 
 type TimeEntryAPI =

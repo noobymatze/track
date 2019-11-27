@@ -27,7 +27,6 @@ data Command
   = Configure
     { _key     :: T.Text
     , _baseUrl :: T.Text
-    , _login   :: T.Text
     }
   | List
 
@@ -39,20 +38,17 @@ data Command
 run :: Command -> IO ()
 run cmd =
   case cmd of
-    Configure key baseUrl login -> do
+    Configure key baseUrl -> do
       env <- createEnv baseUrl
-      eitherUser <- C.runClientM (Client.getUser key login) env
+      eitherUser <- C.runClientM (Client.getCurrentUser key) env
       case eitherUser of
         Left err ->
           print err
 
-        Right Nothing ->
-          putStrLn "User could not be found, did you really user your login name?"
-
-        Right (Just user) ->
+        Right user ->
           let
             config =
-              Config.Config key baseUrl login (User.id user)
+              Config.Config key baseUrl (User.login user) (User.id user)
           in do
             path <- Config.write config
             putStrLn $ "Configuration successfully written to " ++ path ++ "!"
@@ -130,15 +126,8 @@ configureOptions =
         <> short 'b'
         <> help "The base URL of your redmine server."
         )
-
-    login =
-      strOption
-        ( long "login"
-        <> short 'l'
-        <> help "The login name for your personal Redmine account."
-        )
   in
-    Configure <$> key <*> baseUrl <*> login
+    Configure <$> key <*> baseUrl
 
 
 

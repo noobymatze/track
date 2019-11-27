@@ -22,7 +22,7 @@ executable track
                      , Data.TimeEntry
                      , Data.TimeEntryResult
                      , Data.User
-                     , Data.UsersResult
+                     , Data.CurrentUserResult
                      , Data.Named
                      , Helper
                      , Redmine.API

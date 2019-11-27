@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Data.UsersResult
-  ( UsersResult (..)
+module Data.CurrentUserResult
+  ( CurrentUserResult (..)
   ) where
 
 
@@ -14,13 +14,13 @@ import           GHC.Generics
 -- TIME ENTRY RESULT
 
 
-data UsersResult
-  = UsersResult
-    { users :: [User.User]
+data CurrentUserResult
+  = CurrentUserResult
+    { user :: User.User
     } deriving (Generic)
 
 
 
 -- SERIALIZATION
 
-instance FromJSON UsersResult where
+instance FromJSON CurrentUserResult where

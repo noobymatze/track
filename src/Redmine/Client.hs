@@ -1,19 +1,20 @@
 module Redmine.Client
   ( getEntries
   , createEntry
-  , getUser
+  , getCurrentUser
   ) where
 
-import qualified Data.Text            as T
-import qualified Data.Time            as Time
-import qualified Data.TimeEntry       as TimeEntry
-import qualified Data.TimeEntryResult as TimeEntryResult
-import qualified Data.User            as User
-import qualified Data.UsersResult     as UsersResult
-import           Helper               ((|>))
-import qualified Redmine.API          as API
+import qualified Data.CurrentUserResult as CurrentUserResult
+import qualified Data.Text              as T
+import qualified Data.Time              as Time
+import qualified Data.TimeEntry         as TimeEntry
+import qualified Data.TimeEntryResult   as TimeEntryResult
+import qualified Data.User              as User
+import           Helper                 ((|>))
+import qualified Redmine.API            as API
 import           Servant.API
 import           Servant.Client
+
 
 
 -- WORK WITH TIME ENTRIES
@@ -36,18 +37,16 @@ createEntry key userId =
   createEntry_ (Just key) (Just userId)
 
 
-getUser :: T.Text -> T.Text -> ClientM (Maybe User.User)
-getUser key name = do
-  users <- fmap UsersResult.users (getUsers_ (Just key) (Just name))
-  case users of
-    [user] ->
-      pure (Just user)
 
-    _ ->
-      pure Nothing
+-- USERS
 
 
-
+getCurrentUser :: T.Text -> ClientM User.User
+getCurrentUser key =
+  key
+    |> Just
+    |> getUser_
+    |> fmap CurrentUserResult.user
 
 
 
@@ -64,8 +63,7 @@ createEntry_ :: Maybe T.Text
              -> TimeEntry.TimeEntry
              -> ClientM ()
 
-getUsers_ :: Maybe T.Text
-         -> Maybe T.Text
-         -> ClientM UsersResult.UsersResult
+getUser_ :: Maybe T.Text
+         -> ClientM CurrentUserResult.CurrentUserResult
 
-(getUsers_ :<|> getEntries_ :<|> createEntry_) = client API.redmine
+(getUser_ :<|> getEntries_ :<|> createEntry_) = client API.redmine

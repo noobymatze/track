@@ -10,7 +10,7 @@ import           GHC.Generics
 
 
 
--- TIME ENTRY
+-- USER
 
 
 data User
