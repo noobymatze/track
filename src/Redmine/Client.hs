@@ -2,9 +2,13 @@ module Redmine.Client
   ( getEntries
   , createEntry
   , getCurrentUser
+  , getCustomFields
   ) where
 
 import qualified Data.CurrentUserResult as CurrentUserResult
+import qualified Data.Custom            as Custom
+import qualified Data.CustomFields      as CustomFields
+import qualified Data.NewTimeEntry      as NewTimeEntry
 import qualified Data.Text              as T
 import qualified Data.Time              as Time
 import qualified Data.TimeEntry         as TimeEntry
@@ -32,9 +36,9 @@ getEntries key spentOnDay userId =
       |> fmap TimeEntryResult.time_entries
 
 
-createEntry :: T.Text -> Int -> TimeEntry.TimeEntry -> ClientM ()
-createEntry key userId =
-  createEntry_ (Just key) (Just userId)
+createEntry :: T.Text -> NewTimeEntry.NewTimeEntry -> ClientM ()
+createEntry key =
+  createEntry_ (Just key)
 
 
 
@@ -50,6 +54,19 @@ getCurrentUser key =
 
 
 
+-- CUSTOM FIELDS
+
+
+getCustomFields :: T.Text -> ClientM [Custom.Field]
+getCustomFields key =
+  key
+    |> Just
+    |> getCustomFields_
+    |> fmap CustomFields.custom_fields
+
+
+
+
 -- RAW GENERATED API
 
 
@@ -59,11 +76,13 @@ getEntries_ :: Maybe T.Text
             -> ClientM TimeEntryResult.TimeEntryResult
 
 createEntry_ :: Maybe T.Text
-             -> Maybe Int
-             -> TimeEntry.TimeEntry
+             -> NewTimeEntry.NewTimeEntry
              -> ClientM ()
 
 getUser_ :: Maybe T.Text
          -> ClientM CurrentUserResult.CurrentUserResult
 
-(getUser_ :<|> getEntries_ :<|> createEntry_) = client API.redmine
+getCustomFields_ :: Maybe T.Text
+                 -> ClientM CustomFields.CustomFields
+
+(getUser_ :<|> (getEntries_ :<|> createEntry_) :<|> getCustomFields_) = client API.redmine

@@ -3,7 +3,7 @@ module Config
   ( Config (..)
   , Error (..)
   , load
-  , write
+  , store
   ) where
 
 
@@ -33,11 +33,11 @@ data Error
 
 
 
--- READ CONFIGURATION
+-- WORK WITH THE CONFIGURATION
 
 
 load :: IO (Either Error Config)
-load = withConfigFile $ \configFile ->
+load =
   let
     toEither maybeConfig =
       case maybeConfig of
@@ -47,7 +47,8 @@ load = withConfigFile $ \configFile ->
         Just config ->
           Right config
   in do
-    exists <- D.doesFileExist configFile
+    configFile <- getConfigFile
+    exists     <- D.doesFileExist configFile
     if not exists then
       pure (Left NotFound)
     else
@@ -56,20 +57,21 @@ load = withConfigFile $ \configFile ->
         |> fmap toEither
 
 
-write :: Config -> IO FilePath
-write config =
-  withConfigFile $ \configFile ->
-    Json.encodeFile configFile config >> pure configFile
+store :: Config -> IO FilePath
+store config = do
+  configFile <- getConfigFile
+  Json.encodeFile configFile config
+  pure configFile
 
 
 
 -- HELPERS
 
 
-withConfigFile :: (FilePath -> IO a) -> IO a
-withConfigFile f = do
+getConfigFile :: IO FilePath
+getConfigFile = do
   home <- D.getHomeDirectory
-  f (home </> ".track")
+  pure (home </> ".track")
 
 
 

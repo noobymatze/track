@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module CLI
   ( Command (..)
   , parser
@@ -7,6 +8,11 @@ module CLI
 
 import qualified Config                  as Config
 import           Control.Monad
+import qualified Data.Custom             as Custom
+import qualified Data.Map.Strict         as Map
+import           Data.Maybe
+import           Data.NewTimeEntry       (NewTimeEntry (..))
+import qualified Data.NewTimeEntry       as NewTimeEntry
 import qualified Data.Text               as T
 import qualified Data.Time               as Time
 import qualified Data.TimeEntry          as TimeEntry
@@ -29,6 +35,13 @@ data Command
     , _baseUrl :: T.Text
     }
   | List
+  | New
+    { _issueId   :: Maybe Int
+    , _projectId :: Maybe Int
+    , _hours     :: Double
+    , _activity  :: Maybe Int
+    , _comment   :: Maybe T.Text
+    }
 
 
 
@@ -50,11 +63,41 @@ run cmd =
             config =
               Config.Config key baseUrl (User.login user) (User.id user)
           in do
-            path <- Config.write config
-            putStrLn $ "Configuration successfully written to " ++ path ++ "!"
+            path <- Config.store config
+            putStrLn $ "Configuration successfully written to " ++ path
 
     List ->
       listToday
+
+    New issueId projectId hours activity comment ->
+      let
+        create today =
+          NewTimeEntry.NewTimeEntry
+          { issue_id = issueId
+          , project_id = projectId
+          , spent_on = today
+          , hours = hours
+          , activity = fromMaybe 0 activity
+          , comments = comment
+          , custom_fields = [] -- [Custom.CustomValue 5 "0"]
+          }
+
+      in withConfig $ \config -> do
+        today <- getToday
+        env <- createEnv (Config.baseUrl config)
+        let newEntry = create (Just today)
+        result <- C.runClientM (Client.createEntry (Config.key config) newEntry) env
+        case result of
+          Left err ->
+            print err
+
+          Right _ ->
+            putStrLn "Successfully created your time"
+
+
+
+
+
 
 
 listToday :: IO ()
@@ -90,7 +133,7 @@ listToday = withConfig $ \config ->
 
 parser :: ParserInfo Command
 parser =
-  info (parserHelp <**> helper)
+  info ((parserHelp <|> trackOptions) <**> helper)
     ( fullDesc
     <> progDesc "Configure and show your time from today"
     <> header "track - a small CLI to track your time with redmine"
@@ -105,9 +148,50 @@ parserHelp =
         "Configure the base URL and API key of your Redmine instance."
   in
     subparser
-    ( command "configure" (info (configureOptions <**> helper) configureHelp)
+    ( command "config" (info (configureOptions <**> helper) configureHelp)
     <> command "list" (info (pure List) (progDesc "List logged time of today"))
     )
+
+
+trackOptions :: Parser Command
+trackOptions =
+  let
+    issueId =
+      Just <$> option auto
+        ( long "issue"
+        <> short 'i'
+        <> help "The issue id you have been working on"
+        ) <|> pure Nothing
+
+    projectId =
+      Just <$> option auto
+        ( long "project"
+        <> short 'p'
+        <> help "The project id you have been working on"
+        ) <|> pure Nothing
+
+    hours =
+      option auto
+        ( long "hours"
+        <> short 't'
+        <> help "The number of hours"
+        )
+
+    activity =
+      Just <$> option auto
+        ( long "activity"
+        <> short 'a'
+        <> help "The activity"
+        ) <|> pure Nothing
+
+    comment =
+      Just . T.pack <$> strOption
+        ( long "message"
+        <> short 'm'
+        <> help "A message"
+        ) <|> pure Nothing
+  in
+    New <$> issueId <*> projectId <*> hours <*> activity <*> comment
 
 
 configureOptions :: Parser Command

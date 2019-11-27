@@ -7,9 +7,10 @@ module Redmine.API
 
 
 import qualified Data.CurrentUserResult as CurrentUserResult
+import qualified Data.CustomFields      as CustomFields
+import qualified Data.NewTimeEntry      as NewTimeEntry
 import           Data.Proxy
 import qualified Data.Text              as T
-import qualified Data.TimeEntry         as TimeEntry
 import qualified Data.TimeEntryResult   as TimeEntryResult
 import           Servant.API
 
@@ -19,7 +20,8 @@ import           Servant.API
 
 
 type RedmineAPI =
-    UserAPI :<|> TimeEntryAPI
+    UserAPI :<|> TimeEntryAPI :<|> CustomFieldsAPI
+
 
 type UserAPI =
     "users"
@@ -36,10 +38,14 @@ type TimeEntryAPI =
       :> Get '[JSON] TimeEntryResult.TimeEntryResult
     :<|> "time_entries.json"
       :> QueryParam "key" T.Text
-      :> QueryParam "user_id" Int
-      :> ReqBody '[JSON] TimeEntry.TimeEntry
+      :> ReqBody '[JSON] NewTimeEntry.NewTimeEntry
       :> Post '[JSON] ()
 
+
+type CustomFieldsAPI =
+    "custom_fields.json"
+      :> QueryParam "key" T.Text
+      :> Get '[JSON] CustomFields.CustomFields
 
 
 -- PROXY

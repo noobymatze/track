@@ -29,6 +29,7 @@ executable track
                      , Redmine.Client
   build-depends:       base >= 4.7 && < 5
                      , text
+                     , containers
                      , optparse-applicative
                      , servant-client
                      , servant
