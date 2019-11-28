@@ -47,6 +47,8 @@ run config cmd =
       in do
         today   <- getToday
         entries <- Client.getEntries today userId
+        let allHours = sum (fmap TimeEntry.hours entries)
+        liftIO $ putStrLn $ "Hours: " ++ show allHours
         forM_ entries $ \entry ->
           liftIO $ putStrLn $ T.unpack (TimeEntry.display entry)
 

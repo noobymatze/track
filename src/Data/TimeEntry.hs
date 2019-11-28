@@ -33,7 +33,8 @@ data TimeEntry
 display :: TimeEntry -> T.Text
 display entry =
   T.intercalate " "
-  [ Named.name (project entry)
+  [ T.pack (show (hours entry))
+  , Named.name (project entry)
   , comments entry
   ]
 
