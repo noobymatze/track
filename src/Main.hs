@@ -1,6 +1,7 @@
 module Main where
 
 import           CLI
+import qualified Config
 import qualified Options.Applicative as Options
 
 
@@ -10,5 +11,4 @@ import qualified Options.Applicative as Options
 
 main :: IO ()
 main =
-  Options.execParser CLI.parser >>= CLI.run
-
+  Config.load >>= Options.execParser . CLI.parser >>= CLI.run

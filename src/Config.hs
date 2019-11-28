@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Config
   ( Config (..)
-  , Error (..)
   , load
   , store
   ) where
@@ -10,7 +9,6 @@ module Config
 import           Data.Aeson       as Json
 import qualified Data.Text        as T
 import           GHC.Generics
-import           Helper           ((|>))
 import qualified System.Directory as D
 import           System.FilePath
 
@@ -28,33 +26,18 @@ data Config
     } deriving (Generic)
 
 
-data Error
-  = NotFound
-
-
 
 -- WORK WITH THE CONFIGURATION
 
 
-load :: IO (Either Error Config)
-load =
-  let
-    toEither maybeConfig =
-      case maybeConfig of
-        Nothing ->
-          Left NotFound
-
-        Just config ->
-          Right config
-  in do
-    configFile <- getConfigFile
-    exists     <- D.doesFileExist configFile
-    if not exists then
-      pure (Left NotFound)
-    else
-      configFile
-        |> Json.decodeFileStrict
-        |> fmap toEither
+load :: IO (Maybe Config)
+load = do
+  configFile <- getConfigFile
+  exists     <- D.doesFileExist configFile
+  if not exists then
+    pure Nothing
+  else
+   Json.decodeFileStrict configFile
 
 
 store :: Config -> IO FilePath

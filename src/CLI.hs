@@ -6,23 +6,14 @@ module CLI
   ) where
 
 
-import qualified Config                  as Config
-import           Control.Monad
-import qualified Data.Custom             as Custom
-import qualified Data.Map.Strict         as Map
-import           Data.Maybe
-import           Data.NewTimeEntry       (NewTimeEntry (..))
-import qualified Data.NewTimeEntry       as NewTimeEntry
-import qualified Data.Text               as T
-import qualified Data.Time               as Time
-import qualified Data.TimeEntry          as TimeEntry
-import qualified Data.User               as User
-import           Helper                  ((|>))
-import qualified Network.HTTP.Client     as Http
-import qualified Network.HTTP.Client.TLS as Http
+import qualified App
+import qualified CLI.Authenticated   as Authenticated
+import qualified Config
+import qualified Data.Text           as T
+import qualified Data.User           as User
+import           Helper              ((|>))
 import           Options.Applicative
-import qualified Redmine.Client          as Client
-import qualified Servant.Client          as C
+import qualified Redmine.Client      as Client
 
 
 
@@ -30,18 +21,14 @@ import qualified Servant.Client          as C
 
 
 data Command
-  = Configure
-    { _key     :: T.Text
-    , _baseUrl :: T.Text
-    }
-  | List
-  | New
-    { _issueId   :: Maybe Int
-    , _projectId :: Maybe Int
-    , _hours     :: Double
-    , _activity  :: Maybe Int
-    , _comment   :: Maybe T.Text
-    }
+  = Init (Maybe InitOptions)
+  | Authenticated Config.Config Authenticated.Command
+
+
+data InitOptions = InitOptions
+  { _key     :: T.Text
+  , _baseUrl :: T.Text
+  }
 
 
 
@@ -51,151 +38,75 @@ data Command
 run :: Command -> IO ()
 run cmd =
   case cmd of
-    Configure key baseUrl -> do
-      env <- createEnv baseUrl
-      eitherUser <- C.runClientM (Client.getCurrentUser key) env
-      case eitherUser of
-        Left err ->
-          print err
-
-        Right user ->
-          let
-            config =
-              Config.Config key baseUrl (User.login user) (User.id user)
-          in do
-            path <- Config.store config
-            putStrLn $ "Configuration successfully written to " ++ path
-
-    List ->
-      listToday
-
-    New issueId projectId hours activity comment ->
+    Init (Just (InitOptions key baseUrl)) ->
       let
-        create today =
-          NewTimeEntry.NewTimeEntry
-          { issue_id = issueId
-          , project_id = projectId
-          , spent_on = today
-          , hours = hours
-          , activity = fromMaybe 0 activity
-          , comments = comment
-          , custom_fields = [] -- [Custom.CustomValue 5 "0"]
-          }
+        newConfig user =
+          Config.Config key baseUrl (User.login user) (User.id user)
+      in do
+        user <- execApp key baseUrl Client.getCurrentUser
+        path <- Config.store (newConfig user)
+        putStrLn $ "Configuration successfully written to " ++ path
 
-      in withConfig $ \config -> do
-        today <- getToday
-        env <- createEnv (Config.baseUrl config)
-        let newEntry = create (Just today)
-        result <- C.runClientM (Client.createEntry (Config.key config) newEntry) env
-        case result of
-          Left err ->
-            print err
+    Authenticated config subCmd ->
+      let
+        key =
+          Config.key config
 
-          Right _ ->
-            putStrLn "Successfully created your time"
+        baseUrl =
+          Config.baseUrl config
+      in
+        subCmd
+          |> Authenticated.run config
+          |> execApp key baseUrl
 
-
-
-
-
-
-
-listToday :: IO ()
-listToday = withConfig $ \config ->
-  let
-    userId =
-      config
-        |> Config.userId
-
-    key =
-      config
-        |> Config.key
-
-    baseUrl =
-      config
-        |> Config.baseUrl
-  in do
-    env <- createEnv baseUrl
-    today <- getToday
-    result <- C.runClientM (Client.getEntries key today userId) env
-    case result of
-      Left err ->
-        print err
-
-      Right entries ->
-        forM_ entries $ \entry ->
-          putStrLn $ T.unpack (TimeEntry.display entry)
+    _ ->
+      putStrLn $ T.unpack $ T.intercalate "\n"
+        [ "Hi, thank you for using track!"
+        , ""
+        , "It seems you have yet to initialize track with some credentials to use it."
+        , "Please run "
+        , ""
+        , "    track init "
+        , ""
+        , "to create a ~/.track configuration."
+        ]
 
 
 
 -- PARSER
 
 
-parser :: ParserInfo Command
-parser =
-  info ((parserHelp <|> trackOptions) <**> helper)
-    ( fullDesc
-    <> progDesc "Configure and show your time from today"
-    <> header "track - a small CLI to track your time with redmine"
-    )
-
-
-parserHelp :: Parser Command
-parserHelp =
+parser :: Maybe Config.Config -> ParserInfo Command
+parser maybeConfig =
   let
-    configureHelp =
-      progDesc
-        "Configure the base URL and API key of your Redmine instance."
+    parserHelp =
+      case maybeConfig of
+        Nothing ->
+          initParser <|> pure (Init Nothing)
+
+        Just config ->
+          Authenticated config <$> Authenticated.parser <|> initParser
+  in
+    info (parserHelp <**> helper)
+      ( fullDesc
+      <> progDesc "Configure and show your time from today"
+      <> header "track - a small CLI to track your time with redmine"
+      )
+
+
+initParser :: Parser Command
+initParser =
+  let
+    initp =
+      Init <$> (Just <$> initOptions <**> helper)
   in
     subparser
-    ( command "config" (info (configureOptions <**> helper) configureHelp)
-    <> command "list" (info (pure List) (progDesc "List logged time of today"))
+    ( command "init" (info initp (progDesc "Initialize track with some configuration" ))
     )
 
 
-trackOptions :: Parser Command
-trackOptions =
-  let
-    issueId =
-      Just <$> option auto
-        ( long "issue"
-        <> short 'i'
-        <> help "The issue id you have been working on"
-        ) <|> pure Nothing
-
-    projectId =
-      Just <$> option auto
-        ( long "project"
-        <> short 'p'
-        <> help "The project id you have been working on"
-        ) <|> pure Nothing
-
-    hours =
-      option auto
-        ( long "hours"
-        <> short 't'
-        <> help "The number of hours"
-        )
-
-    activity =
-      Just <$> option auto
-        ( long "activity"
-        <> short 'a'
-        <> help "The activity"
-        ) <|> pure Nothing
-
-    comment =
-      Just . T.pack <$> strOption
-        ( long "message"
-        <> short 'm'
-        <> help "A message"
-        ) <|> pure Nothing
-  in
-    New <$> issueId <*> projectId <*> hours <*> activity <*> comment
-
-
-configureOptions :: Parser Command
-configureOptions =
+initOptions :: Parser InitOptions
+initOptions =
   let
     key =
       strOption
@@ -211,32 +122,20 @@ configureOptions =
         <> help "The base URL of your redmine server."
         )
   in
-    Configure <$> key <*> baseUrl
+    InitOptions <$> key <*> baseUrl
 
 
 
 -- HELPERS
 
 
-withConfig :: (Config.Config -> IO a) -> IO ()
-withConfig f = do
-  eitherConfig <- Config.load
-  case eitherConfig of
-    Left Config.NotFound ->
-      putStrLn "Configuration could not be found, please run `track configure`!"
+execApp :: T.Text -> T.Text -> App.App a -> IO a
+execApp key baseUrl app = do
+  env <- App.createEnv key baseUrl
+  result <- App.run env app
+  case result of
+    Left err ->
+      error (show err)
 
-    Right config ->
-      f config >> pure ()
-
-
-createEnv :: T.Text -> IO C.ClientEnv
-createEnv baseUrl = do
-  baseUrl <- C.parseBaseUrl (T.unpack baseUrl)
-  manager' <- Http.newManager Http.tlsManagerSettings
-  pure (C.mkClientEnv manager' baseUrl)
-
-
-getToday :: IO Time.Day
-getToday = do
-  now <- Time.getCurrentTime
-  pure (Time.utctDay now)
+    Right v ->
+      pure v

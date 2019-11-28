@@ -5,6 +5,8 @@ module Redmine.Client
   , getCustomFields
   ) where
 
+
+import qualified App
 import qualified Data.CurrentUserResult as CurrentUserResult
 import qualified Data.Custom            as Custom
 import qualified Data.CustomFields      as CustomFields
@@ -17,53 +19,49 @@ import qualified Data.User              as User
 import           Helper                 ((|>))
 import qualified Redmine.API            as API
 import           Servant.API
-import           Servant.Client
 
 
 
 -- WORK WITH TIME ENTRIES
 
 
-getEntries :: T.Text -> Time.Day -> Int -> ClientM [TimeEntry.TimeEntry]
-getEntries key spentOnDay userId =
+getEntries :: Time.Day -> Int -> App.App [TimeEntry.TimeEntry]
+getEntries spentOnDay userId =
   let
     spentOn =
       spentOnDay
         |> Time.formatTime Time.defaultTimeLocale "%F"
         |> T.pack
-  in
-    getEntries_ (Just key) (Just spentOn) (Just userId)
+  in do
+    apiKey <- App.getApiKey
+    getEntries_ (Just apiKey) (Just spentOn) (Just userId)
       |> fmap TimeEntryResult.time_entries
 
 
-createEntry :: T.Text -> NewTimeEntry.NewTimeEntry -> ClientM ()
-createEntry key =
-  createEntry_ (Just key)
+createEntry :: NewTimeEntry.NewTimeEntry -> App.App ()
+createEntry newEntry = do
+  apiKey <- App.getApiKey
+  createEntry_ (Just apiKey) newEntry
 
 
 
 -- USERS
 
 
-getCurrentUser :: T.Text -> ClientM User.User
-getCurrentUser key =
-  key
-    |> Just
-    |> getUser_
-    |> fmap CurrentUserResult.user
+getCurrentUser :: App.App User.User
+getCurrentUser = do
+  apiKey <- App.getApiKey
+  CurrentUserResult.user <$> getUser_ (Just apiKey)
 
 
 
 -- CUSTOM FIELDS
 
 
-getCustomFields :: T.Text -> ClientM [Custom.Field]
-getCustomFields key =
-  key
-    |> Just
-    |> getCustomFields_
-    |> fmap CustomFields.custom_fields
-
+getCustomFields :: App.App [Custom.Field]
+getCustomFields = do
+  apiKey <- App.getApiKey
+  CustomFields.custom_fields <$> getCustomFields_ (Just apiKey)
 
 
 
@@ -73,16 +71,16 @@ getCustomFields key =
 getEntries_ :: Maybe T.Text
             -> Maybe T.Text
             -> Maybe Int
-            -> ClientM TimeEntryResult.TimeEntryResult
+            -> App.App TimeEntryResult.TimeEntryResult
 
 createEntry_ :: Maybe T.Text
              -> NewTimeEntry.NewTimeEntry
-             -> ClientM ()
+             -> App.App ()
 
 getUser_ :: Maybe T.Text
-         -> ClientM CurrentUserResult.CurrentUserResult
+         -> App.App CurrentUserResult.CurrentUserResult
 
 getCustomFields_ :: Maybe T.Text
-                 -> ClientM CustomFields.CustomFields
+                 -> App.App CustomFields.CustomFields
 
-(getUser_ :<|> (getEntries_ :<|> createEntry_) :<|> getCustomFields_) = client API.redmine
+(getUser_ :<|> (getEntries_ :<|> createEntry_) :<|> getCustomFields_) = App.client API.redmine
