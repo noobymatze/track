@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Data.User
+module Redmine.Users.User
   ( User (..)
   ) where
 
@@ -17,7 +17,7 @@ data User
   = User
   { id    :: Int
   , login :: T.Text
-  } deriving (Generic)
+  } deriving (Show, Generic)
 
 
 
@@ -25,4 +25,3 @@ data User
 
 
 instance FromJSON User where
-instance ToJSON User where

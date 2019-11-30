@@ -7,13 +7,13 @@ module CLI
 
 
 import qualified App
-import qualified CLI.Authenticated   as Authenticated
+import qualified CLI.Authenticated    as Authenticated
 import qualified Config
-import qualified Data.Text           as T
-import qualified Data.User           as User
-import           Helper              ((|>))
+import qualified Data.Text            as T
+import           Helper               ((|>))
 import           Options.Applicative
-import qualified Redmine.Client      as Client
+import qualified Redmine.Users.Client as Users
+import qualified Redmine.Users.User   as User
 
 
 
@@ -43,7 +43,7 @@ run cmd =
         newConfig user =
           Config.Config key baseUrl (User.login user) (User.id user)
       in do
-        user <- execApp key baseUrl Client.getCurrentUser
+        user <- execApp key baseUrl Users.getCurrent
         path <- Config.store (newConfig user)
         putStrLn $ "Configuration successfully written to " ++ path
 

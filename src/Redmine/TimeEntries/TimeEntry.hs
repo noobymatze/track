@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Data.TimeEntry
+module Redmine.TimeEntries.TimeEntry
   ( TimeEntry (..)
   , display
   ) where
@@ -44,4 +44,3 @@ display entry =
 
 
 instance FromJSON TimeEntry where
-instance ToJSON TimeEntry where

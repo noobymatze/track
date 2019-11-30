@@ -7,18 +7,13 @@ module CLI.Authenticated
 
 import qualified App
 import qualified Config
-import           Control.Monad        (forM_)
-import           Control.Monad.Reader (liftIO)
-import qualified Data.Custom          as Custom
-import qualified Data.Map.Strict      as Map
-import           Data.Maybe
-import           Data.NewTimeEntry    (NewTimeEntry (..))
-import qualified Data.NewTimeEntry    as NewTimeEntry
-import qualified Data.Text            as T
-import qualified Data.Time            as Time
-import qualified Data.TimeEntry       as TimeEntry
+import           Control.Monad                 (forM_)
+import           Control.Monad.Reader          (liftIO)
+import qualified Data.Text                     as T
+import qualified Data.Time                     as Time
 import           Options.Applicative
-import qualified Redmine.Client       as Client
+import qualified Redmine.TimeEntries.Client    as TimeEntries
+import qualified Redmine.TimeEntries.TimeEntry as TimeEntry
 
 
 
@@ -46,7 +41,7 @@ run config cmd =
           Config.userId config
       in do
         today   <- getToday
-        entries <- Client.getEntries today userId
+        entries <- TimeEntries.find today userId
         let allHours = sum (fmap TimeEntry.hours entries)
         liftIO $ putStrLn $ "Hours: " ++ show allHours
         forM_ entries $ \entry ->
