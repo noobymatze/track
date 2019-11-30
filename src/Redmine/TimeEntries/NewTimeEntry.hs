@@ -22,7 +22,7 @@ data NewTimeEntry
   , newHours        :: Double
   , newActivity     :: Int
   , newComments     :: Maybe T.Text
-  , newCustomFields :: [Custom.CustomValue]
+  , newCustomValues :: [Custom.CustomValue]
   } deriving (Show)
 
 
@@ -41,6 +41,6 @@ instance ToJSON NewTimeEntry where
       , "hours"         .= newHours entry
       , "activity"      .= newActivity entry
       , "comments"      .= newComments entry
-      , "custom_fields" .= newCustomFields entry
+      , "custom_fields" .= newCustomValues entry
       ]
     ]

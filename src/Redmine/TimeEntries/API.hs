@@ -26,7 +26,7 @@ type API =
     :<|> "time_entries.json"
       :> QueryParam' '[Required] "key" T.Text
       :> ReqBody '[JSON] TimeEntries.NewTimeEntry
-      :> Post '[JSON] ()
+      :> Post '[JSON] NoContent
 
 
 

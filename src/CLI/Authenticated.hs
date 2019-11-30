@@ -7,13 +7,17 @@ module CLI.Authenticated
 
 import qualified App
 import qualified Config
-import           Control.Monad                 (forM_)
-import           Control.Monad.Reader          (liftIO)
-import qualified Data.Text                     as T
-import qualified Data.Time                     as Time
+import           Control.Monad                    (forM_)
+import           Control.Monad.Reader             (liftIO)
+import qualified Data.Maybe                       as Maybe
+import qualified Data.Text                        as T
+import qualified Data.Time                        as Time
 import           Options.Applicative
-import qualified Redmine.TimeEntries.Client    as TimeEntries
-import qualified Redmine.TimeEntries.TimeEntry as TimeEntry
+import qualified Redmine.CustomFields.Client      as CustomFields
+import qualified Redmine.CustomFields.CustomField as CustomField
+import qualified Redmine.TimeEntries.Client       as TimeEntries
+import           Redmine.TimeEntries.NewTimeEntry (NewTimeEntry (..))
+import qualified Redmine.TimeEntries.TimeEntry    as TimeEntry
 
 
 
@@ -22,6 +26,12 @@ import qualified Redmine.TimeEntries.TimeEntry as TimeEntry
 
 data Command
   = New
+    { _issueId   :: Maybe Int
+    , _projectId :: Maybe Int
+    , _hours     :: Double
+    , _activity  :: Int
+    , _comment   :: Maybe T.Text
+    }
   | List
 
 
@@ -32,20 +42,28 @@ data Command
 run :: Config.Config -> Command -> App.App ()
 run config cmd =
   case cmd of
-    New ->
-      undefined
+    New issueId projectId hours activity comment -> do
+      today <- getToday
+      customFields <- filter CustomField.isForTimeEntry <$> CustomFields.getAll
+      customValues <- traverse (liftIO . CustomField.prompt) customFields
+      TimeEntries.create $
+        NewTimeEntry
+          { newIssueId = issueId
+          , newProjectId = projectId
+          , newSpentOn = Just today
+          , newHours = hours
+          , newActivity = activity
+          , newComments = comment
+          , newCustomValues = Maybe.catMaybes customValues
+          }
 
-    List ->
-      let
-        userId =
-          Config.userId config
-      in do
-        today   <- getToday
-        entries <- TimeEntries.find today userId
-        let allHours = sum (fmap TimeEntry.hours entries)
-        liftIO $ putStrLn $ "Hours: " ++ show allHours
-        forM_ entries $ \entry ->
-          liftIO $ putStrLn $ T.unpack (TimeEntry.display entry)
+    List -> do
+      today   <- getToday
+      entries <- TimeEntries.find today (Config.userId config)
+      let allHours = sum (fmap TimeEntry.hours entries)
+      liftIO $ putStrLn $ "Hours: " ++ show allHours
+      forM_ entries $ \entry ->
+        liftIO $ putStrLn $ T.unpack (TimeEntry.display entry)
 
 
 getToday :: App.App Time.Day
@@ -60,91 +78,51 @@ getToday = do
 
 parser :: Parser Command
 parser =
-  parserHelp <|> new
-
-
-parserHelp :: Parser Command
-parserHelp =
-  subparser
-    ( command "list" (info (pure List) (progDesc "List logged time of today"))
-    )
+  let
+    subCmd =
+      subparser
+        ( command "list" (info (pure List) (progDesc "List logged time of today"))
+        )
+  in
+    subCmd <|> new
 
 
 new :: Parser Command
 new =
   let
-    --issueId =
-    --  Just <$> option auto
-    --    ( long "issue"
-    --    <> short 'i'
-    --    <> help "The issue id you have been working on"
-    --    ) <|> pure Nothing
+    issueId =
+      Just <$> option auto
+        ( long "issue"
+        <> short 'i'
+        <> help "The issue id you have been working on"
+        ) <|> pure Nothing
 
-    --projectId =
-    --  Just <$> option auto
-    --    ( long "project"
-    --    <> short 'p'
-    --    <> help "The project id you have been working on"
-    --    ) <|> pure Nothing
+    projectId =
+      Just <$> option auto
+        ( long "project"
+        <> short 'p'
+        <> help "The project id you have been working on"
+        ) <|> pure Nothing
 
-    --hours =
-    --  option auto
-    --    ( long "hours"
-    --    <> short 't'
-    --    <> help "The number of hours"
-    --    )
+    hours =
+      option auto
+        ( long "hours"
+        <> short 't'
+        <> help "The number of hours"
+        )
 
-    --activity =
-    --  Just <$> option auto
-    --    ( long "activity"
-    --    <> short 'a'
-    --    <> help "The activity"
-    --    ) <|> pure Nothing
+    activity =
+      option auto
+        ( long "activity"
+        <> short 'a'
+        <> help "The activity"
+        )
 
-    --comment =
-    --  Just . T.pack <$> strOption
-    --    ( long "message"
-    --    <> short 'm'
-    --    <> help "A message"
-    --    ) <|> pure Nothing
+    comment =
+      Just . T.pack <$> strOption
+        ( long "message"
+        <> short 'm'
+        <> help "A message"
+        ) <|> pure Nothing
   in
-    pure New -- <$> issueId <*> projectId <*> hours <*> activity <*> comment
-
-    --New issueId projectId hours activity comment ->
-      --let
-        --create today =
-          --NewTimeEntry.NewTimeEntry
-          --{ issue_id = issueId
-          --, project_id = projectId
-          --, spent_on = today
-          --, hours = hours
-          --, activity = fromMaybe 0 activity
-          --, comments = comment
-          --, custom_fields = [] -- [Custom.CustomValue 5 "0"]
-          --}
---
-      --in withConfig $ \config -> do
-        --today <- getToday
-        --env <- createEnv (Config.baseUrl config)
-        --let newEntry = create (Just today)
-        --result <- C.runClientM (Client.createEntry (Config.key config) newEntry) env
-        --case result of
-          --Left err ->
-            --print err
---
-          --Right _ ->
-            --putStrLn "Successfully created your time"
-
-
---parserHelp :: Maybe Config.Config -> Parser Command
---parserHelp maybeConfig =
---  let
---    configureHelp =
---      progDesc
---        "Configure the base URL and API key of your Redmine instance."
---  in
---    subparser
---    ( command "init" (info (configureOptions <**> helper) configureHelp)
---    <> command "list" (info (pure List) (progDesc "List logged time of today"))
---    )
-
+    New <$> issueId <*> projectId <*> hours <*> activity <*> comment

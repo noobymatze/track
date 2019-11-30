@@ -26,7 +26,7 @@ find spentOn userId = do
 
 create :: TimeEntries.NewTimeEntry -> App.App ()
 create newEntry =
-  App.getApiKey >>= flip create_ newEntry
+  App.getApiKey >>= flip create_ newEntry >> pure ()
 
 
 
@@ -34,7 +34,7 @@ create newEntry =
 
 find_ :: T.Text -> T.Text -> Int -> App.App TimeEntries.LimitedResult
 
-create_ :: T.Text -> TimeEntries.NewTimeEntry -> App.App ()
+create_ :: T.Text -> TimeEntries.NewTimeEntry -> App.App NoContent
 
 (find_ :<|> create_) = App.client API.proxy
 
