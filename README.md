@@ -63,4 +63,4 @@ why this command line tool exists.
 
 [redmine]: https://www.redmine.org/
 [stack]: https://docs.haskellstack.org/en/stable/README/
-[latest]: 
+[latest]: https://github.com/noobymatze/track/releases/tag/v0.0.1-alpha
