@@ -24,6 +24,7 @@ executable track
                      , Data.Named
                      , Prompt
                      , Helper
+                     , Redmine.Errors
                      , Redmine.Users.API
                      , Redmine.Users.Client
                      , Redmine.Users.User

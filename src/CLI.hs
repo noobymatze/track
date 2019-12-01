@@ -14,6 +14,7 @@ import           Helper               ((|>))
 import           Options.Applicative
 import qualified Redmine.Users.Client as Users
 import qualified Redmine.Users.User   as User
+import qualified System.Exit          as Exit
 
 
 
@@ -134,8 +135,9 @@ execApp key baseUrl app = do
   env <- App.createEnv key baseUrl
   result <- App.run env app
   case result of
-    Left err ->
-      error (show err)
+    Left err -> do
+      putStrLn (T.unpack (App.formatError err))
+      Exit.exitFailure
 
     Right v ->
       pure v
