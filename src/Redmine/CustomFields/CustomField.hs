@@ -45,7 +45,7 @@ prompt field =
     "bool" ->
       Prompt.yesOrNo
         |> Prompt.label (name field <> " [Y/n]: ")
-        |> Prompt.required (Just "Must type 'y' for yes or 'n' for no: ")
+        |> Prompt.required "Must type 'y' for yes or 'n' for no: "
         |> fmap (Just . CustomValue.bool (id field))
 
     "string" ->
@@ -65,7 +65,7 @@ prompt field =
 requiredMaybe :: Bool -> T.Text -> Prompt.Prompt (Maybe a) -> Prompt.Prompt (Maybe a)
 requiredMaybe required requiredLabel p =
   if required then
-    Just <$> Prompt.required' requiredLabel p
+    Just <$> Prompt.required requiredLabel p
   else
     p
 

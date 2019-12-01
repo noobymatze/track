@@ -49,12 +49,12 @@ prompt today customFields =
     hours =
       Prompt.double
         |> Prompt.label "Time spent: "
-        |> Prompt.required (Just "Must insert your time spent: ")
+        |> Prompt.required "Must insert your time spent: "
 
     activity =
       Prompt.int
         |> Prompt.label "Activity: "
-        |> Prompt.required (Just "Must insert the activity: ")
+        |> Prompt.required "Must insert the activity: "
 
     comment =
       Prompt.string
@@ -66,7 +66,7 @@ prompt today customFields =
         |> fmap Maybe.catMaybes
   in do
     issue <- issueId
-    project <- projectId
+    project <- promptForProject issue projectId
     m <- comment
     NewTimeEntry
       <$> pure issue
@@ -76,6 +76,18 @@ prompt today customFields =
       <*> activity
       <*> pure m
       <*> customValues
+
+
+promptForProject :: Maybe Int -> Prompt.Prompt (Maybe Int) -> Prompt.Prompt (Maybe Int)
+promptForProject maybeIssueId projectId =
+  case maybeIssueId of
+    Nothing ->
+        projectId
+          |> Prompt.required "Please insert the project number: "
+          |> fmap Just
+
+    Just _ ->
+      pure Nothing
 
 
 

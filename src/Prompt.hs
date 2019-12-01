@@ -6,7 +6,7 @@ module Prompt
   , string
   , double
   , required
-  , required'
+  , required_
   , label
   , run
   , int
@@ -46,23 +46,23 @@ label l prompt = do
   prompt
 
 
-required' :: T.Text -> Prompt (Maybe a) -> Prompt a
-required' messageOnMaybe =
-  required (Just messageOnMaybe)
+required :: T.Text -> Prompt (Maybe a) -> Prompt a
+required messageOnMaybe =
+  required_ (Just messageOnMaybe)
 
 
-required :: Maybe T.Text -> Prompt (Maybe a) -> Prompt a
-required messageOnMaybe prompt =
+required_ :: Maybe T.Text -> Prompt (Maybe a) -> Prompt a
+required_ messageOnMaybe prompt =
   prompt >>= \maybeValue ->
     case maybeValue of
       Nothing ->
         case messageOnMaybe of
           Nothing -> do
-            required messageOnMaybe prompt
+            required_ messageOnMaybe prompt
 
           Just message -> do
             liftIO $ putStr (T.unpack message)
-            required messageOnMaybe prompt
+            required_ messageOnMaybe prompt
 
 
       Just value ->
