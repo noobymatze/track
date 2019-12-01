@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module CLI.Authenticated
   ( Command
   , parser
@@ -9,14 +10,14 @@ import qualified App
 import qualified Config
 import           Control.Monad                    (forM_)
 import           Control.Monad.Reader             (liftIO)
-import qualified Data.Maybe                       as Maybe
 import qualified Data.Text                        as T
 import qualified Data.Time                        as Time
 import           Options.Applicative
+import qualified Prompt
 import qualified Redmine.CustomFields.Client      as CustomFields
 import qualified Redmine.CustomFields.CustomField as CustomField
 import qualified Redmine.TimeEntries.Client       as TimeEntries
-import           Redmine.TimeEntries.NewTimeEntry (NewTimeEntry (..))
+import           Redmine.TimeEntries.NewTimeEntry as NewTimeEntry
 import qualified Redmine.TimeEntries.TimeEntry    as TimeEntry
 
 
@@ -25,13 +26,7 @@ import qualified Redmine.TimeEntries.TimeEntry    as TimeEntry
 
 
 data Command
-  = New
-    { _issueId   :: Maybe Int
-    , _projectId :: Maybe Int
-    , _hours     :: Double
-    , _activity  :: Int
-    , _comment   :: Maybe T.Text
-    }
+  = New Bool
   | List
 
 
@@ -42,20 +37,16 @@ data Command
 run :: Config.Config -> Command -> App.App ()
 run config cmd =
   case cmd of
-    New issueId projectId hours activity comment -> do
-      today <- getToday
-      customFields <- filter CustomField.isForTimeEntry <$> CustomFields.getAll
-      customValues <- traverse (liftIO . CustomField.prompt) customFields
-      TimeEntries.create $
-        NewTimeEntry
-          { newIssueId = issueId
-          , newProjectId = projectId
-          , newSpentOn = Just today
-          , newHours = hours
-          , newActivity = activity
-          , newComments = comment
-          , newCustomValues = Maybe.catMaybes customValues
-          }
+    New allCustomFields ->
+      let
+        shouldPromptFor field =
+          CustomField.isForTimeEntry field
+            && (CustomField.isRequired field || allCustomFields)
+      in do
+        today <- getToday
+        customFields <- filter shouldPromptFor <$> CustomFields.getAll
+        result <- liftIO $ Prompt.run $ NewTimeEntry.prompt today customFields
+        TimeEntries.create result
 
     List -> do
       today   <- getToday
@@ -90,39 +81,11 @@ parser =
 new :: Parser Command
 new =
   let
-    issueId =
-      Just <$> option auto
-        ( long "issue"
-        <> short 'i'
-        <> help "The issue id you have been working on"
-        ) <|> pure Nothing
-
-    projectId =
-      Just <$> option auto
-        ( long "project"
-        <> short 'p'
-        <> help "The project id you have been working on"
-        ) <|> pure Nothing
-
-    hours =
-      option auto
-        ( long "hours"
-        <> short 't'
-        <> help "The number of hours"
-        )
-
-    activity =
-      option auto
-        ( long "activity"
+    allCustomFields =
+      switch
+        ( long "all-custom-fields"
         <> short 'a'
-        <> help "The activity"
+        <> help "Prompts for all defined custom fields not only the required"
         )
-
-    comment =
-      Just . T.pack <$> strOption
-        ( long "message"
-        <> short 'm'
-        <> help "A message"
-        ) <|> pure Nothing
   in
-    New <$> issueId <*> projectId <*> hours <*> activity <*> comment
+    New <$> allCustomFields

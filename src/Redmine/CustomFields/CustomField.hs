@@ -8,8 +8,11 @@ module Redmine.CustomFields.CustomField
 
 import           Control.Applicative              ((<|>))
 import           Data.Aeson
+import           Data.Semigroup                   ((<>))
 import qualified Data.Text                        as T
+import           Helper                           ((|>))
 import           Prelude                          hiding (id)
+import qualified Prompt
 import qualified Redmine.CustomFields.CustomValue as CustomValue
 
 
@@ -36,44 +39,35 @@ isForTimeEntry field =
   customizedType field == "time_entry"
 
 
-prompt :: CustomField -> IO (Maybe CustomValue.CustomValue)
+prompt :: CustomField -> Prompt.Prompt (Maybe CustomValue.CustomValue)
 prompt field =
   case fieldFormat field of
-    "bool" -> do
-      putStr $ T.unpack $ name field
-      putStr " [Y/n]: "
-      Just . CustomValue.bool (id field) <$> promptYesOrNo
+    "bool" ->
+      Prompt.yesOrNo
+        |> Prompt.label (name field <> " [Y/n]: ")
+        |> Prompt.required (Just "Must type 'y' for yes or 'n' for no: ")
+        |> fmap (Just . CustomValue.bool (id field))
 
-    "string" -> do
-      putStr $ T.unpack $ name field
-      putStr ": "
-      maybeValue <- promptString (isRequired field)
-      pure (CustomValue.string (id field) <$> maybeValue)
+    "string" ->
+      Prompt.string
+        |> Prompt.label (name field <> ": ")
+        |> requiredMaybe (isRequired field) "This is required: "
+        |> fmap (fmap (CustomValue.string (id field)))
 
     format ->
       error $ "The type '" ++ T.unpack format ++ "' has not been implemented yet."
 
 
-promptYesOrNo :: IO Bool
-promptYesOrNo = getLine >>= \value ->
-  if value `elem` ["y", "Y"] then
-    pure True
-  else if value `elem` ["n", "N"] then
-    pure False
-  else do
-    putStr "Must type 'y' for yes or 'n' for no: "
-    promptYesOrNo
+
+-- HELPERS
 
 
-promptString :: Bool -> IO (Maybe T.Text)
-promptString required = (T.strip . T.pack) <$> getLine >>= \value ->
-  if T.length value > 0 then
-    pure (Just value)
-  else if not required then
-    pure Nothing
-  else do
-    putStr "Must insert something: "
-    promptString required
+requiredMaybe :: Bool -> T.Text -> Prompt.Prompt (Maybe a) -> Prompt.Prompt (Maybe a)
+requiredMaybe required requiredLabel p =
+  if required then
+    Just <$> Prompt.required' requiredLabel p
+  else
+    p
 
 
 

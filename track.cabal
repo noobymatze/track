@@ -22,6 +22,7 @@ executable track
                      , CLI.Authenticated
                      , Config
                      , Data.Named
+                     , Prompt
                      , Helper
                      , Redmine.Users.API
                      , Redmine.Users.Client
@@ -49,5 +50,6 @@ executable track
                      , servant-client
                      , servant
                      , prettyprinter
-                     , time
                      , text
+                     , time
+                     , transformers
