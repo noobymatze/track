@@ -47,66 +47,64 @@ label l prompt = do
 
 
 required :: T.Text -> Prompt (Maybe a) -> Prompt a
-required messageOnMaybe =
-  required_ (Just messageOnMaybe)
+required =
+  required_ . Just
 
 
 required_ :: Maybe T.Text -> Prompt (Maybe a) -> Prompt a
-required_ messageOnMaybe prompt =
-  prompt >>= \maybeValue ->
-    case maybeValue of
-      Nothing ->
-        case messageOnMaybe of
-          Nothing -> do
-            required_ messageOnMaybe prompt
+required_ messageOnMaybe prompt = do
+  maybeValue <- prompt
+  case maybeValue of
+    Nothing ->
+      case messageOnMaybe of
+        Nothing ->
+          required_ messageOnMaybe prompt
 
-          Just message -> do
-            liftIO $ putStr (T.unpack message)
-            required_ messageOnMaybe prompt
+        Just message -> do
+          liftIO $ putStr (T.unpack message)
+          required_ messageOnMaybe prompt
+
+    Just value ->
+      pure value
 
 
-      Just value ->
-        pure value
+
+-- PRIMITIVE PROMPTS
 
 
 yesOrNo :: Prompt (Maybe Bool)
-yesOrNo = readLine >>= \input ->
+yesOrNo = custom $ \input ->
   if input `elem` ["Y", "y"] then
-    pure (Just True)
+    Just True
   else if input `elem` ["N", "n"] then
-    pure (Just False)
+    Just False
   else
-    pure Nothing
+    Nothing
 
 
 string :: Prompt (Maybe T.Text)
-string = T.strip <$> readLine >>= \input ->
-  case input of
-    "" ->
-      pure Nothing
-
-    value ->
-      pure (Just value)
+string =
+  custom Just
 
 
 double :: Prompt (Maybe Double)
-double = T.strip <$> readLine >>= \input ->
-  case input of
-    "" ->
-      pure Nothing
-
-    value ->
-      pure (T.readMaybe (T.unpack value))
+double =
+  custom (T.readMaybe . T.unpack)
 
 
 int :: Prompt (Maybe Int)
-int = T.strip <$> readLine >>= \input ->
+int =
+  custom (T.readMaybe . T.unpack)
+
+
+custom :: (T.Text -> Maybe a) -> Prompt (Maybe a)
+custom f = T.strip <$> readLine >>= \input ->
   case input of
     "" ->
       pure Nothing
 
     value ->
-      pure (T.readMaybe (T.unpack value))
+      pure (f value)
 
 
 
