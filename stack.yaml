@@ -34,7 +34,14 @@ packages:
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
 #
-# extra-deps:
+extra-deps:
+  # This stuff should be taken out as soon as Stackage contains the
+  # time library
+  - time-1.9.3
+  - directory-1.3.4.0
+  - process-1.6.7.0
+  - unix-2.7.2.2
+
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a

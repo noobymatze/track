@@ -38,6 +38,7 @@ executable track
                      , Redmine.TimeEntries.LimitedResult
                      , Redmine.TimeEntries.NewTimeEntry
                      , Redmine.TimeEntries.TimeEntry
+                     , Redmine.TimeEntries.NewTimeEntry.Comment
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , containers
@@ -53,3 +54,4 @@ executable track
                      , text
                      , time
                      , transformers
+                     , megaparsec

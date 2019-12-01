@@ -5,14 +5,16 @@ module Redmine.TimeEntries.NewTimeEntry
   ) where
 
 
+import           Control.Monad.IO.Class                   (liftIO)
 import           Data.Aeson
-import qualified Data.Maybe                       as Maybe
-import qualified Data.Text                        as T
-import qualified Data.Time                        as Time
-import           Helper                           ((|>))
+import qualified Data.Maybe                               as Maybe
+import qualified Data.Text                                as T
+import qualified Data.Time                                as Time
+import           Helper                                   ((|>))
 import qualified Prompt
-import qualified Redmine.CustomFields.CustomField as CustomField
-import qualified Redmine.CustomFields.CustomValue as Custom
+import qualified Redmine.CustomFields.CustomField         as CustomField
+import qualified Redmine.CustomFields.CustomValue         as Custom
+import qualified Redmine.TimeEntries.NewTimeEntry.Comment as Comment
 
 
 
@@ -35,7 +37,9 @@ data NewTimeEntry
 -- PUBLIC HELPERS
 
 
-prompt :: Time.Day -> [CustomField.CustomField] -> Prompt.Prompt NewTimeEntry
+prompt :: Time.Day
+       -> [CustomField.CustomField]
+       -> Prompt.Prompt NewTimeEntry
 prompt today customFields =
   let
     issueId =
@@ -64,15 +68,24 @@ prompt today customFields =
       customFields
         |> traverse CustomField.prompt
         |> fmap Maybe.catMaybes
+
+    parseComment message =
+      case fmap Comment.parse message of
+        Just (Right c) ->
+          (Comment.getIssue c, Comment.getTimeSpent c, message)
+
+        _ ->
+          (Nothing, Nothing, message)
   in do
     issue <- issueId
     project <- promptForProject issue projectId
-    m <- comment
+    (_, timeSpent, m) <- parseComment <$> comment
+    liftIO $ printTimeSpent timeSpent
     NewTimeEntry
       <$> pure issue
       <*> pure project
       <*> pure today
-      <*> hours
+      <*> maybe hours pure timeSpent
       <*> activity
       <*> pure m
       <*> customValues
@@ -88,6 +101,16 @@ promptForProject maybeIssueId projectId =
 
     Just _ ->
       pure Nothing
+
+
+printTimeSpent :: Maybe Double -> IO ()
+printTimeSpent maybeTimeSpent =
+  case maybeTimeSpent of
+    Nothing ->
+      pure ()
+
+    Just timeSpent ->
+      putStrLn $ "Time spent: " <> show timeSpent
 
 
 
