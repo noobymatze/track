@@ -60,7 +60,7 @@ prompt today activities customFields =
     activity =
       activities
         |> Activity.prompt
-        |> Prompt.label "Activity (choose one):\n"
+        |> Prompt.label "Activity (choose one, * is default):\n"
         |> Prompt.required "You must choose one of them: "
 
     comment =

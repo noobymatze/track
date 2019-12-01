@@ -17,6 +17,7 @@ module Prompt
 import           Control.Monad
 import           Control.Monad.IO.Class
 import qualified Data.Text              as T
+import           Helper                 ((|>))
 import qualified Text.Read              as T
 
 
@@ -115,24 +116,40 @@ custom f = T.strip <$> readLine >>= \input ->
 
 oneOf :: [(Int, T.Text)] -> Maybe Int -> Prompt (Maybe Int)
 oneOf values maybeDefaultSelected = do
-  liftIO $ forM_ values $ \v@(identifier, l) -> do
-    let ident = T.justifyRight 2 ' ' (T.pack (show identifier))
-    liftIO $ putStrLn $ viewStar v maybeDefaultSelected <> T.unpack ident <> " " <> T.unpack l
+  forM_ values (liftIO . putStrLn . T.unpack . viewOption maybeDefaultSelected)
   liftIO $ putStr "> "
-  maybeValue <- int
+  maybeValue <- T.strip <$> readLine
   case maybeValue of
-    Nothing ->
+    "" ->
       pure maybeDefaultSelected
 
-    Just v ->
-      if v `elem` map fst values then
-        pure (Just v)
-      else do
-        liftIO $ putStr "Must be one of the numbers above: "
-        oneOf values maybeDefaultSelected
+    value ->
+      case T.readMaybe (T.unpack value) of
+        Nothing -> do
+          liftIO $ putStrLn "Must be one of the numbers or none at all: "
+          oneOf values maybeDefaultSelected
+
+        Just v ->
+          if v `elem` map fst values then
+            pure (Just v)
+          else do
+            liftIO $ putStr "Must be one of the numbers above: "
+            oneOf values maybeDefaultSelected
 
 
-viewStar :: (Int, T.Text) -> Maybe Int -> String
+viewOption :: Maybe Int -> (Int, T.Text) -> T.Text
+viewOption maybeSelected v@(identifier, label_) =
+  let
+    ident =
+      identifier
+        |> show
+        |> T.pack
+        |> T.justifyRight 2 ' '
+  in
+    viewStar v maybeSelected <> ident <> " " <> label_
+
+
+viewStar :: (Int, T.Text) -> Maybe Int -> T.Text
 viewStar (identifier, _) maybeSelected =
   case maybeSelected of
     Nothing ->
