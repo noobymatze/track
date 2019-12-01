@@ -60,9 +60,7 @@ to a certain issue or project. However, navigating its user interface
 to add a new time entry for a known issue is annoying at best. That is
 why this command line tool exists.
 
-There are also some small quality of life improvements.
-
 
 [redmine]: https://www.redmine.org/
-[latest]: 
 [stack]: https://docs.haskellstack.org/en/stable/README/
+[latest]: 
