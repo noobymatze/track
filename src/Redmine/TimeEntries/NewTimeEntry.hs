@@ -14,6 +14,7 @@ import           Helper                                   ((|>))
 import qualified Prompt
 import qualified Redmine.CustomFields.CustomField         as CustomField
 import qualified Redmine.CustomFields.CustomValue         as Custom
+import qualified Redmine.TimeEntries.Activity             as Activity
 import qualified Redmine.TimeEntries.NewTimeEntry.Comment as Comment
 
 
@@ -38,9 +39,10 @@ data NewTimeEntry
 
 
 prompt :: Time.Day
+       -> [Activity.Activity]
        -> [CustomField.CustomField]
        -> Prompt.Prompt NewTimeEntry
-prompt today customFields =
+prompt today activities customFields =
   let
     issueId =
       Prompt.int
@@ -56,13 +58,14 @@ prompt today customFields =
         |> Prompt.required "Must insert your time spent: "
 
     activity =
-      Prompt.int
-        |> Prompt.label "Activity: "
-        |> Prompt.required "Must insert the activity: "
+      activities
+        |> Activity.prompt
+        |> Prompt.label "Activity (choose one):\n"
+        |> Prompt.required "You must choose one of them: "
 
     comment =
       Prompt.string
-        |> Prompt.label "Message: "
+        |> Prompt.label "Comment: "
 
     customValues =
       customFields

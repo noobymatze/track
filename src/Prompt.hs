@@ -10,9 +10,11 @@ module Prompt
   , label
   , run
   , int
+  , oneOf
   ) where
 
 
+import           Control.Monad
 import           Control.Monad.IO.Class
 import qualified Data.Text              as T
 import qualified Text.Read              as T
@@ -105,6 +107,42 @@ custom f = T.strip <$> readLine >>= \input ->
 
     value ->
       pure (f value)
+
+
+
+-- ONE OF
+
+
+oneOf :: [(Int, T.Text)] -> Maybe Int -> Prompt (Maybe Int)
+oneOf values maybeDefaultSelected = do
+  liftIO $ forM_ values $ \v@(identifier, l) -> do
+    let ident = T.justifyRight 2 ' ' (T.pack (show identifier))
+    liftIO $ putStrLn $ viewStar v maybeDefaultSelected <> T.unpack ident <> " " <> T.unpack l
+  liftIO $ putStr "> "
+  maybeValue <- int
+  case maybeValue of
+    Nothing ->
+      pure maybeDefaultSelected
+
+    Just v ->
+      if v `elem` map fst values then
+        pure (Just v)
+      else do
+        liftIO $ putStr "Must be one of the numbers above: "
+        oneOf values maybeDefaultSelected
+
+
+viewStar :: (Int, T.Text) -> Maybe Int -> String
+viewStar (identifier, _) maybeSelected =
+  case maybeSelected of
+    Nothing ->
+      "    "
+
+    Just selected ->
+      if selected == identifier then
+        "(*) "
+      else
+        "    "
 
 
 

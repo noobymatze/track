@@ -44,8 +44,9 @@ run config cmd =
             && (CustomField.isRequired field || allCustomFields)
       in do
         today <- getToday
+        activities <- TimeEntries.getActivities
         customFields <- filter shouldPromptFor <$> CustomFields.getAll
-        result <- liftIO $ Prompt.run $ NewTimeEntry.prompt today customFields
+        result <- liftIO $ Prompt.run $ NewTimeEntry.prompt today activities customFields
         TimeEntries.create result
 
     List -> do

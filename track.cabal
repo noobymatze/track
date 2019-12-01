@@ -34,6 +34,8 @@ executable track
                      , Redmine.CustomFields.CustomFieldRsp
                      , Redmine.CustomFields.CustomValue
                      , Redmine.TimeEntries.API
+                     , Redmine.TimeEntries.Activities
+                     , Redmine.TimeEntries.Activity
                      , Redmine.TimeEntries.Client
                      , Redmine.TimeEntries.LimitedResult
                      , Redmine.TimeEntries.NewTimeEntry

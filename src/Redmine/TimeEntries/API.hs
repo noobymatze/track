@@ -8,6 +8,7 @@ module Redmine.TimeEntries.API
 
 import           Data.Proxy                        (Proxy (..))
 import qualified Data.Text                         as T
+import qualified Redmine.TimeEntries.Activities    as TimeEntries
 import qualified Redmine.TimeEntries.LimitedResult as TimeEntries
 import qualified Redmine.TimeEntries.NewTimeEntry  as TimeEntries
 import           Servant.API
@@ -27,6 +28,10 @@ type API =
       :> QueryParam' '[Required] "key" T.Text
       :> ReqBody '[JSON] TimeEntries.NewTimeEntry
       :> Post '[JSON] NoContent
+    :<|> "enumerations"
+      :> "time_entry_activities.json"
+      :> QueryParam' '[Required] "key" T.Text
+      :> Get '[JSON] TimeEntries.Activities
 
 
 
