@@ -53,9 +53,10 @@ run config cmd =
       today   <- getToday
       entries <- TimeEntries.find today (Config.userId config)
       let allHours = sum (fmap TimeEntry.hours entries)
-      liftIO $ putStrLn $ "Hours: " ++ show allHours
+      let options = TimeEntry.DisplayOptions (maximum (fmap TimeEntry.projectLength entries)) (maximum (fmap TimeEntry.hoursLength entries))
       forM_ entries $ \entry ->
-        liftIO $ putStrLn $ T.unpack (TimeEntry.display entry)
+        liftIO $ putStrLn $ T.unpack (TimeEntry.display options entry)
+      liftIO $ putStrLn $ "Hours: " ++ show allHours
 
 
 getToday :: App.App Time.Day

@@ -23,6 +23,7 @@ type API =
       :> QueryParam' '[Required] "key" T.Text
       :> QueryParam' '[Required] "spent_on" T.Text
       :> QueryParam' '[Required] "user_id" Int
+      :> QueryParam "sort" T.Text
       :> Get '[JSON] TimeEntries.LimitedResult
     :<|> "time_entries.json"
       :> QueryParam' '[Required] "key" T.Text

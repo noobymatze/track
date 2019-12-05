@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Redmine.TimeEntries.Client
   ( find
   , create
@@ -24,7 +25,7 @@ import           Servant.API
 find :: Time.Day -> Int -> App.App [TimeEntries.TimeEntry]
 find spentOn userId = do
   key <- App.getApiKey
-  TimeEntries.timeEntries <$> find_ key (formatDay spentOn) userId
+  TimeEntries.timeEntries <$> find_ key (formatDay spentOn) userId (Just "spent_on:asc")
 
 
 create :: TimeEntries.NewTimeEntry -> App.App ()
@@ -40,7 +41,7 @@ getActivities =
 
 -- RAW CLIENTS
 
-find_ :: T.Text -> T.Text -> Int -> App.App TimeEntries.LimitedResult
+find_ :: T.Text -> T.Text -> Int -> Maybe T.Text -> App.App TimeEntries.LimitedResult
 
 create_ :: T.Text -> TimeEntries.NewTimeEntry -> App.App NoContent
 
