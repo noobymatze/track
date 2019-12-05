@@ -53,7 +53,7 @@ run config cmd =
 
     List -> do
       today   <- getToday
-      entries <- pure [] -- TimeEntries.find today (Config.userId config)
+      entries <- TimeEntries.find today (Config.userId config)
       let totalHours  = TimeEntry.totalHours entries
       let options     = TimeEntry.createOptions entries
       let viewed      = fmap (TimeEntry.display options) entries
