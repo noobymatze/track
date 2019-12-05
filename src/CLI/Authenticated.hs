@@ -8,10 +8,11 @@ module CLI.Authenticated
 
 import qualified App
 import qualified Config
-import           Control.Monad                    (forM_)
+import           Control.Monad                    (forM_, void)
 import           Control.Monad.Reader             (liftIO)
 import qualified Data.Text                        as T
 import qualified Data.Time                        as Time
+import           Helper                           ((|>))
 import           Options.Applicative
 import qualified Prompt
 import qualified Redmine.CustomFields.Client      as CustomFields
@@ -19,6 +20,7 @@ import qualified Redmine.CustomFields.CustomField as CustomField
 import qualified Redmine.TimeEntries.Client       as TimeEntries
 import           Redmine.TimeEntries.NewTimeEntry as NewTimeEntry
 import qualified Redmine.TimeEntries.TimeEntry    as TimeEntry
+import qualified System.Console.ANSI              as ANSI
 
 
 
@@ -51,18 +53,67 @@ run config cmd =
 
     List -> do
       today   <- getToday
-      entries <- TimeEntries.find today (Config.userId config)
-      let allHours = sum (fmap TimeEntry.hours entries)
-      let options = TimeEntry.DisplayOptions (maximum (fmap TimeEntry.projectLength entries)) (maximum (fmap TimeEntry.hoursLength entries))
-      forM_ entries $ \entry ->
-        liftIO $ putStrLn $ T.unpack (TimeEntry.display options entry)
-      liftIO $ putStrLn $ "Hours: " ++ show allHours
+      entries <- pure [] -- TimeEntries.find today (Config.userId config)
+      let totalHours  = TimeEntry.totalHours entries
+      let options     = TimeEntry.createOptions entries
+      let viewed      = fmap (TimeEntry.display options) entries
+      let longestLine = 8 + maxi (fmap (T.length . T.intercalate " " . fmap snd) viewed)
+      if null entries then do
+        liftIO $ putStrLn "----------------"
+        liftIO $ putStrLn "| No entries yet"
+        liftIO $ putStrLn "----------------"
+      else do
+        liftIO $ putStrLn $ sep longestLine
+        forM_ entries (liftIO . viewEntry options)
+        liftIO $ putStrLn $ sep longestLine
+      liftIO $ setColorForFullHours totalHours
+      liftIO $ putStrLn $ "| Total:  " ++ show totalHours
 
 
 getToday :: App.App Time.Day
 getToday = do
   now <- liftIO Time.getCurrentTime
   pure (Time.utctDay now)
+
+
+viewEntry :: TimeEntry.DisplayOptions -> TimeEntry.TimeEntry -> IO ()
+viewEntry opts entry =
+  let
+    view i (color, column) =
+      let
+        indent =
+          if i == 0 then "" else " "
+      in do
+        ANSI.setSGR [ANSI.Reset]
+        putStr $ T.unpack $ indent <> "| "
+        ANSI.setSGR [color]
+        putStr $ T.unpack column
+  in
+  entry
+    |> TimeEntry.display opts
+    |> zipWith view [0..]
+    |> sequence
+    >> putStrLn ""
+
+
+maxi :: (Ord a, Num a) => [a] -> a
+maxi [] = 0
+maxi a  = maximum a
+
+
+setColorForFullHours :: Double -> IO ()
+setColorForFullHours hours
+  | 8.0 <= hours && hours <= 9.0 =
+    ANSI.setSGR [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
+  | hours > 9.0 =
+    ANSI.setSGR [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Yellow]
+  | otherwise =
+    ANSI.setSGR [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+
+
+sep :: Int -> String
+sep i =
+  replicate i '-'
 
 
 

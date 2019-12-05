@@ -47,6 +47,7 @@ executable track
                      , Redmine.TimeEntries.NewTimeEntry.Comment
   build-depends:       base >= 4.7 && < 5
                      , aeson
+                     , ansi-terminal
                      , containers
                      , directory
                      , filepath

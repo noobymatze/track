@@ -4,8 +4,8 @@ module Redmine.TimeEntries.TimeEntry
   ( TimeEntry (..)
   , DisplayOptions (..)
   , display
-  , projectLength
-  , hoursLength
+  , createOptions
+  , totalHours
   ) where
 
 
@@ -15,6 +15,7 @@ import qualified Data.Named          as Named
 import qualified Data.Text           as T
 import           GHC.Generics
 import           Helper              ((|>))
+import qualified System.Console.ANSI as ANSI
 
 
 
@@ -43,17 +44,19 @@ data DisplayOptions
     } deriving (Show)
 
 
-projectLength :: TimeEntry -> Int
-projectLength =
-  T.length . Named.name . project
+createOptions :: [TimeEntry] -> DisplayOptions
+createOptions entries =
+  let
+    maxi [] = 0
+    maxi a  = maximum a
+  in
+  DisplayOptions
+    { maxProjectLength = maxi $ fmap projectLength entries
+    , maxHoursLength =  maxi $ fmap hoursLength entries
+    }
 
 
-hoursLength :: TimeEntry -> Int
-hoursLength =
-  length . show . hours
-
-
-display :: DisplayOptions -> TimeEntry -> T.Text
+display :: DisplayOptions -> TimeEntry -> [(ANSI.SGR, T.Text)]
 display options entry =
   let
     projectIndent =
@@ -64,21 +67,54 @@ display options entry =
       maxHoursLength options - hoursLength entry
         |> indent
   in
-    T.intercalate " "
-    [ maybe (hourIndent <> "    ") (\d -> T.pack ("#" <> show d)) (issue entry)
-    , hourIndent <> T.pack (show (hours entry))
-    , Named.name (project entry) <> projectIndent
-    , comments entry
+    [ (blue, maybe (hourIndent <> "    ") (\d -> T.pack ("#" <> show d)) (issue entry))
+    , (yellow, hourIndent <> T.pack (show (hours entry)))
+    , (reset, Named.name (project entry) <> projectIndent)
+    , (reset, comments entry)
     ]
 
 
+totalHours :: [TimeEntry] -> Double
+totalHours =
+  sum . fmap hours
 
--- HELPERS
+
+
+-- COLORS
+
+
+blue :: ANSI.SGR
+blue =
+  ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue
+
+
+yellow :: ANSI.SGR
+yellow =
+  ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Yellow
+
+
+reset :: ANSI.SGR
+reset =
+  ANSI.Reset
+
+
+
+-- PRIVATE HELPERS
 
 
 indent :: Int -> T.Text
 indent i =
   T.replicate i " "
+
+
+projectLength :: TimeEntry -> Int
+projectLength =
+  T.length . Named.name . project
+
+
+hoursLength :: TimeEntry -> Int
+hoursLength =
+  length . show . hours
 
 
 
