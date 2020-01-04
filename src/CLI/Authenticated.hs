@@ -8,7 +8,7 @@ module CLI.Authenticated
 
 import qualified App
 import qualified Config
-import           Control.Monad                    (forM_, void)
+import           Control.Monad                    (forM_)
 import           Control.Monad.Reader             (liftIO)
 import qualified Data.Text                        as T
 import qualified Data.Time                        as Time
@@ -79,6 +79,7 @@ getToday = do
 viewEntry :: TimeEntry.DisplayOptions -> TimeEntry.TimeEntry -> IO ()
 viewEntry opts entry =
   let
+    view :: Int -> (ANSI.SGR, T.Text) -> IO ()
     view i (color, column) =
       let
         indent =
